@@ -221,7 +221,7 @@ void QuadDynamics::Dynamics(float dt, float simTime, V3F external_force, V3F ext
   V3F force_body_frame(0.f,0.f,-total_thrust);
   float half_dt = dt/2;
   V3F force_inertial_frame = quat.Rotate_BtoI(force_body_frame);
-  V3F gravity(0.f,0.f,9.81f);
+
 
 
   matrix::Vector<float,3> omega_v;

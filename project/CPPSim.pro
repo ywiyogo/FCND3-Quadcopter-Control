@@ -27,3 +27,7 @@ HEADERS += ../lib/mavlink/common/*.h
 LIBS += -lglut -lGLU -lGL -lpthread
 
 QMAKE_CXXFLAGS += -Wno-unused-parameter -Wno-unused-local-typedefs
+
+DISTFILES += \
+    ../config/traj/*.* \
+    ../config/*.* \

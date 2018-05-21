@@ -23,6 +23,12 @@ bld/
 # CLion/IntelliJ IDEA
 .idea/
 
+# QTCreator
+project/CPPSim.pro.user
 
 # manual cmake build ignores
 build/
+build-CPPSim*/
+
+# doxygen
+doc/*/

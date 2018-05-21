@@ -12,6 +12,8 @@ using namespace fastdelegate;
 class QuadDynamics;
 typedef shared_ptr<QuadDynamics> QuadcopterHandle;
 
+const V3F gravity(0.f,0.f,9.81f);
+
 class QuadDynamics : public BaseDynamics
 {
 public:
