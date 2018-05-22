@@ -30,7 +30,7 @@ void QuadControl::Init()
   kpPosXY = config->Get(_config+".kpPosXY", 0);
   kpPosZ = config->Get(_config + ".kpPosZ", 0);
   KiPosZ = config->Get(_config + ".KiPosZ", 0);
-
+  kdPosZ = config->Get(_config + ".kdPosZ", 0);
   kpVelXY = config->Get(_config + ".kpVelXY", 0);
   kpVelZ = config->Get(_config + ".kpVelZ", 0);
 
@@ -50,7 +50,6 @@ void QuadControl::Init()
   maxMotorThrust = config->Get(_config + ".maxMotorThrust", 100);
 #else
   // load params from PX4 parameter system
-  //! \todo
   param_get(param_find("MC_PITCH_P"), &Kp_bank);
   param_get(param_find("MC_YAW_P"), &Kp_yaw);
 #endif
@@ -73,28 +72,39 @@ VehicleCommand QuadControl::GenerateMotorCommands(float collThrustCmd, V3F momen
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
   //! \todo DONE
-  printf("collThrustCmd: %f maxMotorThrust: %f \n", collThrustCmd, maxMotorThrust);
+  //printf("collThrustCmd: %f maxMotorThrust: %f \n", collThrustCmd, maxMotorThrust);
 
   float l = L / sqrt(2);
-  float c_bar = collThrustCmd ;
-  float p_bar = Ixx * momentCmd.x / l;
-  float q_bar = Iyy * momentCmd.y / l;
-  float r_bar = Izz * momentCmd.z ;
+  float f_total = collThrustCmd ;  // [N]
 
-  float omega_3 = (c_bar + p_bar - q_bar - r_bar) / 4.f ;
-  float omega_2 = (r_bar -p_bar) / 2 + omega_3 ;
-  float omega_1 = (c_bar - p_bar)/2 - omega_2;
-  float omega_0 = c_bar - omega_1 - omega_2 - omega_3;
+  // Equations of the generated moments
+  // moment = F * l
 
-  cmd.desiredThrustsN[0] = CONSTRAIN( omega_0*omega_0, minMotorThrust, maxMotorThrust); // front left
-  cmd.desiredThrustsN[1] = CONSTRAIN( omega_1*omega_1, minMotorThrust, maxMotorThrust); // front right
-  cmd.desiredThrustsN[2] = CONSTRAIN( omega_2*omega_2, minMotorThrust, maxMotorThrust); // rear left
-  cmd.desiredThrustsN[3] = CONSTRAIN( omega_3*omega_3, minMotorThrust, maxMotorThrust); // rear right
+  float f_rot_x = momentCmd.x / l; // f0 + f3 - f1 -f2
+  float f_rot_y = momentCmd.y / l; // f0 + f1 - f2 -f3
+  float f_rot_z = momentCmd.z / kappa;
 
-  printf("cmd.desiredThrustsN[0]: %f maxMotorThrust: %f \n", cmd.desiredThrustsN[0], maxMotorThrust);
-  printf("cmd.desiredThrustsN[1]: %f maxMotorThrust: %f \n", cmd.desiredThrustsN[1], maxMotorThrust);
-  printf("cmd.desiredThrustsN[2]: %f maxMotorThrust: %f \n", cmd.desiredThrustsN[2], maxMotorThrust);
-  printf("cmd.desiredThrustsN[3]: %f maxMotorThrust: %f \n", cmd.desiredThrustsN[3], maxMotorThrust);
+  //By solving these 4 linear equations
+  // f_total =  f0 + f1 + f2 + f3
+  // f_rot_x =  f0 - f1 + f2 - f3
+  // f_rot_y =  f0 + f1 - f2 - f3
+  // f_rot_z = -f0 + f1 + f2 - f3
+
+  // we get these solutions
+  float f0 = (f_total + f_rot_x + f_rot_y - f_rot_z) / 4.f ;
+  float f2 = (f_total + f_rot_x - f_rot_y - f_rot_z) / 4.f ;
+  float f1 = (f_total - f_rot_x + f_rot_y + f_rot_z) / 4.f ;
+  float f3 = (f_total - f_rot_x - f_rot_y - f_rot_z) / 4.f ;
+
+  cmd.desiredThrustsN[0] = CONSTRAIN( -f0, minMotorThrust, maxMotorThrust); // front left
+  cmd.desiredThrustsN[1] = CONSTRAIN( -f1, minMotorThrust, maxMotorThrust); // front right
+  cmd.desiredThrustsN[2] = CONSTRAIN( -f2, minMotorThrust, maxMotorThrust); // rear left
+  cmd.desiredThrustsN[3] = CONSTRAIN( -f3, minMotorThrust, maxMotorThrust); // rear right
+
+  //printf("cmd.desiredThrustsN[0]: %f N maxMotorThrust: %f \n", cmd.desiredThrustsN[0], maxMotorThrust);
+  //printf("cmd.desiredThrustsN[1]: %f N maxMotorThrust: %f \n", cmd.desiredThrustsN[1], maxMotorThrust);
+  //printf("cmd.desiredThrustsN[2]: %f N maxMotorThrust: %f \n", cmd.desiredThrustsN[2], maxMotorThrust);
+  //printf("cmd.desiredThrustsN[3]: %f N maxMotorThrust: %f \n", cmd.desiredThrustsN[3], maxMotorThrust);
   assert(cmd.desiredThrustsN[0] <= maxMotorThrust);
   assert(cmd.desiredThrustsN[1] <= maxMotorThrust);
   assert(cmd.desiredThrustsN[2] <= maxMotorThrust);
@@ -126,7 +136,7 @@ V3F QuadControl::BodyRateControl(V3F pqrCmd, V3F pqr)
   //! \todo
   auto pqr_err = pqrCmd - pqr;
 
-  momentCmd = this->kpPQR * pqr_err;
+  momentCmd = V3F(Ixx, Iyy, Izz) * this->kpPQR * pqr_err;
   
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -157,16 +167,21 @@ V3F QuadControl::RollPitchControl(V3F accelCmd, Quaternion<float> attitude, floa
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
   //! \todo DONE
-  auto thrust_ratio = collThrustCmd / mass;
 
-  if (collThrustCmd >0.0f)
+  // collective acceleration, the thrust is negative direction of z-axis
+  auto coll_acc = collThrustCmd / mass; //[m/s^2] = N / kg
+  // z(0) is the ground. For a hover we need a negative thrust
+  if (collThrustCmd <0.0f)
   {
-    auto accel_x = -1 * CONSTRAIN(accelCmd.x / thrust_ratio, -maxTiltAngle, maxTiltAngle);
-    auto accel_y = -1 * CONSTRAIN(accelCmd.y / thrust_ratio, -maxTiltAngle, maxTiltAngle);
-    V3F acc_dot;
-    acc_dot.x = this->kpBank * (R(0,2) - accel_x);
-    acc_dot.y = this->kpBank * (R(1,2) - accel_y);
-    acc_dot.z = 0;
+    // direction of the collective thrust in the inertial frame
+    //printf("accelCmd.x: %f, ")
+    auto R13 = CONSTRAIN(accelCmd.x / coll_acc, -maxTiltAngle, maxTiltAngle);
+    auto R23 = CONSTRAIN(accelCmd.y / coll_acc, -maxTiltAngle, maxTiltAngle);
+
+    V3F R_Pcontrol;
+    R_Pcontrol.x = this->kpBank * (R(0,2) - R13);
+    R_Pcontrol.y = this->kpBank * (R(1,2) - R23);
+    R_Pcontrol.z = 0;
 
     Mat3x3F R_dot;
     R_dot(0,0) = R(1,0);
@@ -176,7 +191,7 @@ V3F QuadControl::RollPitchControl(V3F accelCmd, Quaternion<float> attitude, floa
     R_dot = R_dot / R(2,2);
 
     // pc, qc
-    pqrCmd = R_dot * acc_dot;
+    pqrCmd = R_dot * R_Pcontrol;
   }
   else
   {
@@ -212,19 +227,33 @@ float QuadControl::AltitudeControl(float posZCmd, float velZCmd, float posZ, flo
   //  - remember that for an upright quad in NED, thrust should be HIGHER if the desired Z acceleration is LOWER
 
   Mat3x3F R = attitude.RotationMatrix_IwrtB();
-  float thrust = 0;
+  float thrust_cmd = 0;
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
   //! \todo DONE
+
   auto z_err = posZCmd - posZ;
+  //printf("z_err: %f, posZCmd: %f, posZ: %f\n", z_err, posZCmd, posZ);
+  // constrain the velocity command
+  velZCmd = CONSTRAIN(velZCmd, -maxAscentRate, maxDescentRate);
   auto z_dot_err = velZCmd - velZ;
-  auto u1_bar = this->kpPosZ* z_err + this->kpVelZ * z_dot_err + accelZCmd;
+  //printf("z_dot_err: %f, velZCmd: %f, velZ %f\n", z_dot_err, velZCmd, velZ);
+  auto pcontrol = kpPosZ * z_err;
+  auto dcontrol = kdPosZ * z_dot_err;
+  // Note, the integral term ACCUMULATE the error over time. Thus we need +=.
+  integratedAltitudeError += z_err * dt;
+  auto icontrol = KiPosZ * integratedAltitudeError;
+  // defined by myself
+  auto acc_ff = 2.f;
+  auto acc_cmd = pcontrol + icontrol + dcontrol + acc_ff;
+  //printf("acc_cmd: %f\n", acc_cmd);
   auto b_z = R(2,2);
-  thrust = (u1_bar - gravity[2]) / b_z;
+  // Note, gravity is in the z positive direction. thus +g
+  thrust_cmd = mass * (acc_cmd + gravity[2]) / b_z;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
   
-  return thrust;
+  return thrust_cmd;
 }
 
 // returns a desired acceleration in global frame
@@ -292,8 +321,18 @@ float QuadControl::YawControl(float yawCmd, float yaw)
   float yawRateCmd=0;
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
   //! \todo DONE
+  auto restr_yawCmd = fmodf(yawCmd, 2.f * F_PI);
+  auto yaw_err = restr_yawCmd - yaw;
 
-  auto yaw_err = yawCmd - yaw;
+  if (yaw_err > F_PI)
+  {
+    yaw_err = yaw_err - 2.f * F_PI;
+  }
+  else if (yaw_err < -F_PI)
+  {
+    yaw_err = yaw_err + 2.f * F_PI;
+  }
+
   yawRateCmd = this->kpYaw * yaw_err;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
@@ -307,11 +346,16 @@ VehicleCommand QuadControl::RunControl(float dt, float simTime)
   curTrajPoint = GetNextTrajectoryPoint(simTime);
 
   float collThrustCmd = AltitudeControl(curTrajPoint.position.z, curTrajPoint.velocity.z, estPos.z, estVel.z, estAtt, curTrajPoint.accel.z, dt);
+  //printf("collThrustCmd: %f N \n", collThrustCmd);
 
   // reserve some thrust margin for angle control
   float thrustMargin = .1f*(maxMotorThrust - minMotorThrust);
-  collThrustCmd = CONSTRAIN(collThrustCmd, (minMotorThrust+ thrustMargin)*4.f, (maxMotorThrust-thrustMargin)*4.f);
-  
+  //printf("thrustMargin: %f N , min: %f, max: %f\n", thrustMargin, (minMotorThrust+ thrustMargin)*4.f, (maxMotorThrust-thrustMargin)*4.f);
+
+  // check the constrain, e.g min: 2.160000, max: 16.240000. Hence, convert collThrustCmd to positive value in the CONSTRAIN function
+  collThrustCmd = -1 * CONSTRAIN(-1 * collThrustCmd, (minMotorThrust+ thrustMargin)*4.f, (maxMotorThrust-thrustMargin)*4.f);
+  //printf("After check collThrustCmd: %f N \n", collThrustCmd);
+
   V3F desAcc = LateralPositionControl(curTrajPoint.position, curTrajPoint.velocity, estPos, estVel, curTrajPoint.accel);
   
   V3F desOmega = RollPitchControl(desAcc, estAtt, collThrustCmd);

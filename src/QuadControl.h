@@ -39,6 +39,9 @@ public:
   float KiPosZ;
   V3F kpPQR;
   
+  // YW: add gain for D control
+  float kdPosZ;
+
   // limits & saturations
   float maxAscentRate, maxDescentRate;
   float maxSpeedXY;
