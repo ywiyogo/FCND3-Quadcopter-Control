@@ -1,12 +1,12 @@
 # 3D Control for Quadcopter
 
-##Project Instruction
+## Project Instruction
 
 In the Udacity Flying Car Nanodegree Lesson 12-14, I learned about the basic vehicle control, the control architecture and a full 3D cascaded control. In this project, I've learned how to implement the 3D control in C++ for a real quadcopter. The development setup and the project instruction are provided [here](./Instruction.md).
 
 A quadcopter in 3D space has 12 state parameters:
 
-![state](http://latex.codecogs.com/gif.latex?X%20%3D%20%5Cbegin%7Bbmatrix%7D%20x%2C%20y%2C%20z%2C%20%5Cphi%20%2C%20%5Ctheta%20%2C%20%5Cpsi%2C%20%5Cdot%7Bx%7D%2C%20%5Cdot%7By%7D%2C%20%5Cdot%7Bz%7D%2C%20p%2C%20q%2C%20r%20%5C%5C%20%5Cend%7Bbmatrix%7D)
+![state](http://latex.codecogs.com/gif.latex?X%20%3D%20%5Cbegin%7Bbmatrix%7D%20x%2C%20y%2C%20z%2C%20%5Cphi%20%2C%20%5Ctheta%20%2C%20%5Cpsi%2C%20%5Cdot%7Bx%7D%2C%20%5Cdot%7By%7D%2C%20%5Cdot%7Bz%7D%2C%20p%2C%20q%2C%20r%20%5C%20%5Cend%7Bbmatrix%7D%20%2C%20p%20%5Cneq%20%5Cdot%7B%5Cphi%7D%2C%20q%20%5Cneq%20%5Cdot%7B%5Ctheta%7D%2C%20r%20%5Cneq%20%5Cdot%7B%5Cpsi%7D)
 
 As described in the lesson, the 3D Control architecture for a quadcopter can be illustrated as the below image:
 
