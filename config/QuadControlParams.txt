@@ -18,23 +18,24 @@ kappa = 0.016
 minMotorThrust = .1
 maxMotorThrust = 4.5
 
-# Position control gains
-kpPosXY = 100
-kpPosZ = 200
-KiPosZ = 100
-# YW: additional gain for D control
-kdPosZ = 200
+# Position control gains. Range kpPos: 2-4 KiPosZ= 40-80
+kpPosXY = 32
+kpPosZ = 20
+KiPosZ = 80
+# YW: additional gain for D control (optional)
+kdPosZ = 2
 
-# Velocity control gains
-kpVelXY = 8
-kpVelZ = 15
+# Velocity control gains Range: 8-16; kpVel:kpPos = 4
+kpVelXY = 10
+kpVelZ = 7
 
-# Angle control gains
-kpBank = 10
-kpYaw = 4
+# Angle control gains. Range kpBank:10-20, kpYaw: 2-4
+kpBank = 18
+kpYaw = 4.8
 
 # Angle rate gains
-kpPQR = 23, 23, 5
+# Ranges of kpPQR = 46-92, 46-92, 10-20
+kpPQR = 70, 70, 10
 
 # limits
 maxAscentRate = 5
