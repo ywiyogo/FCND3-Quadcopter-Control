@@ -96,16 +96,11 @@ VehicleCommand QuadControl::GenerateMotorCommands(float collThrustCmd, V3F momen
   float f1 = (f_total - f_rot_x + f_rot_y + f_rot_z) / 4.f ;
   float f3 = (f_total - f_rot_x - f_rot_y - f_rot_z) / 4.f ;
 
-
   cmd.desiredThrustsN[0] = CONSTRAIN( f0, minMotorThrust, maxMotorThrust); // front left
   cmd.desiredThrustsN[1] = CONSTRAIN( f1, minMotorThrust, maxMotorThrust); // front right
   cmd.desiredThrustsN[2] = CONSTRAIN( f2, minMotorThrust, maxMotorThrust); // rear left
   cmd.desiredThrustsN[3] = CONSTRAIN( f3, minMotorThrust, maxMotorThrust); // rear right
 
-  //printf("cmd.desiredThrustsN[0]: %f N maxMotorThrust: %f \n", cmd.desiredThrustsN[0], maxMotorThrust);
-  //printf("cmd.desiredThrustsN[1]: %f N maxMotorThrust: %f \n", cmd.desiredThrustsN[1], maxMotorThrust);
-  //printf("cmd.desiredThrustsN[2]: %f N maxMotorThrust: %f \n", cmd.desiredThrustsN[2], maxMotorThrust);
-  //printf("cmd.desiredThrustsN[3]: %f N maxMotorThrust: %f \n", cmd.desiredThrustsN[3], maxMotorThrust);
   assert(cmd.desiredThrustsN[0] <= maxMotorThrust);
   assert(cmd.desiredThrustsN[1] <= maxMotorThrust);
   assert(cmd.desiredThrustsN[2] <= maxMotorThrust);
@@ -172,14 +167,12 @@ V3F QuadControl::RollPitchControl(V3F accelCmd, Quaternion<float> attitude, floa
   // collective acceleration, the thrust is negative direction of z-axis
   auto coll_acc = -1 * collThrustCmd / mass; //[m/s^2] = N / kg
   // z(0) is the ground. For a hover we need a negative thrust
-  //printf("coll_acc: %f, Coll. thrust: %f\n", coll_acc, collThrustCmd);
 
   // direction of the collective thrust in the inertial frame
-  //printf("accelCmd.x: %f, ")
-  //printf("accelCmd.x: %f, y: %f, coll_acc: %f\n", accelCmd.x, accelCmd.y, coll_acc);
+
   auto R13 = CONSTRAIN(accelCmd.x / coll_acc, -maxTiltAngle, maxTiltAngle);
   auto R23 = CONSTRAIN(accelCmd.y / coll_acc, -maxTiltAngle, maxTiltAngle);
-  //printf("R13: %f, R23: %f, min: %f, max: %f\n", R13, R23, -maxTiltAngle, maxTiltAngle);
+
   V3F R_Pcontrol;
   R_Pcontrol.x = this->kpBank * (R13 - R(0,2) );
   R_Pcontrol.y = this->kpBank * (R23 - R(1,2));
@@ -192,7 +185,7 @@ V3F QuadControl::RollPitchControl(V3F accelCmd, Quaternion<float> attitude, floa
   R_dot(1,1) = -R(0,1);
   R_dot = R_dot / R(2,2);
 
-  // pc, qc
+  // pc, qc as the angular velocities i nthe body frame
   pqrCmd = R_dot * R_Pcontrol;
   //printf("pqrCmd.p: %f, q: %f r: %f\n", pqrCmd.x, pqrCmd.y, pqrCmd.z);
 
@@ -240,11 +233,10 @@ float QuadControl::AltitudeControl(float posZCmd, float velZCmd, float posZ, flo
   // Note, the integral term ACCUMULATE the error over time. Thus we need +=.
   integratedAltitudeError += z_err * dt;
   auto icontrol = KiPosZ * integratedAltitudeError;
-  // defined by myself
+
   auto acc_ff = accelZCmd;
   auto acc_cmd = pcontrol + icontrol + dcontrol + acc_ff;
 
-  //printf("acc_cmd: %f\n", acc_cmd);
   auto b_z = R(2,2);
 
   // Note, gravity is in the z positive direction. thus +g
@@ -286,7 +278,7 @@ V3F QuadControl::LateralPositionControl(V3F posCmd, V3F velCmd, V3F pos, V3F vel
   // Make sure to _add_, not simply replace, the result of your controller
   // to this variable
   V3F accelCmd = accelCmdFF;
-  //printf("accelCmdFF.x: %f, y:%f, z: %f\n", accelCmdFF.x, accelCmdFF.y, accelCmdFF.z);
+
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
   //! \todo DONE
   // Speed limit. Note, the input param velCmd will be modified
@@ -323,7 +315,7 @@ float QuadControl::YawControl(float yawCmd, float yaw)
   float yawRateCmd=0;
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
   //! \todo DONE
-
+  // based on the python code solution https://github.com/udacity/FCND-Controls/blob/solution/controller.py
   auto restr_yawCmd = fmodf(yawCmd, 2.f * F_PI);
   auto yaw_err = restr_yawCmd - yaw;
 
@@ -337,7 +329,6 @@ float QuadControl::YawControl(float yawCmd, float yaw)
   }
 
   yawRateCmd = this->kpYaw * yaw_err;
-  //printf("yawRateCmd: %f \n", yawRateCmd);
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   return yawRateCmd;
