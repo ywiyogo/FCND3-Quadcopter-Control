@@ -71,7 +71,10 @@ The result of the implementation can be seen in scenario 2 as below animation:
 
 ## Scenario 3
 
-The next step is to implement the lateral-position-control, the altitude-control, and the yaw-control sequentially. Then, I tuned their gains. One important thing in the lateral-position-control is that the input parameters from the trajectory point (`curTrajPoint.velocity` and `curTrajPoint.accel` have to be modified. I implemented PD-with-feedforward control in this lateral-position-control block.
+The next step is to implement the lateral-position-control, the altitude-control, and the yaw-control sequentially. Then, I tuned their gains. One important thing in the lateral-position-control is that the input parameters from the trajectory point (`curTrajPoint.velocity` and `curTrajPoint.accel` have to be modified. I implemented PD-with-feedforward control in this lateral-position-control block based on this quadcopter dynamics taken from [the section 3 of this paper](http://www.dynsyslab.org/wp-content/papercite-data/pdf/schoellig-acc12.pdf):
+
+![quad dynamic](http://latex.codecogs.com/gif.latex?%5Cbegin%7Bbmatrix%7D%20%5Cddot%7Bx%7D%5C%5C%20%5Cddot%7By%7D%5C%5C%20%5Cddot%7Bz%7D%20%5Cend%7Bbmatrix%7D%20%3D%20R%28t%29%20*%20%5Cbegin%7Bbmatrix%7D%200%5C%5C%200%5C%5C%20c%28t%29%20%5Cend%7Bbmatrix%7D%20-%20%5Cbegin%7Bbmatrix%7D%200%5C%5C%200%5C%5C%20g%20%5Cend%7Bbmatrix%7D%20%5CLeftrightarrow%20%5Cbegin%7Bmatrix%7D%20%5Cddot%7Bx%7D%20%3D%20c%28t%29%20b%5E%7Bx%7D%5C%5C%20%5Cddot%7By%7D%20%3D%20c%28t%29%20b%5E%7By%7D%20%5C%5C%20%5Cddot%7Bz%7D%20%3D%20c%28t%29%20b%5E%7Bz%7D%20-g%20%5Cend%7Bmatrix%7D)
+
 
 In the altitude-control block, I implement the PID-with-feedforward. The integral term is integrated after observing the quad1 in the scenario4. For the yaw-control block, I implement the P control.
 
